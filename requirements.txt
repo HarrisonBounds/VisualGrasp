@@ -2,3 +2,5 @@ pillow
 transformers
 torch
 typeguard
+torchvision
+accelerate
