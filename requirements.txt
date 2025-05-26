@@ -4,3 +4,6 @@ torch
 typeguard
 torchvision
 accelerate
+segment_anything
+opencv-python
+matplotlib
