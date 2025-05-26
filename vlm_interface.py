@@ -1,6 +1,8 @@
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 import torch
 from PIL import Image
+import re
+import json
 
 def main():
     model_id = "Qwen/Qwen2.5-VL-7B-Instruct"
@@ -60,13 +62,20 @@ def main():
         output_tokens = model.generate(
             **inputs,
             max_new_tokens=256, 
-            do_sample=True,     
+            do_sample=False,     
             temperature=0.7,    
             top_p=0.9           
         )
 
     response_text = processor.decode(output_tokens[0], skip_special_tokens=True)
-    print("\nModel's raw response:")
-    print(response_text)
+
+    json_string_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+
+    if json_string_match:
+        json_string = json_string_match.group(0)        
+        parsed_data = json.loads(json_string)
+
+        if object_name in parsed_data:
+            coordinate_list = parsed_data[object_name]
 
 main()
