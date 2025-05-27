@@ -1,10 +1,12 @@
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 from segment_anything import sam_model_registry, SamPredictor
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw
 import re
 import json
 import numpy as np
+import google.generativeai as genai 
+import os 
 
 def main():
     original_width, original_height = 0, 0
@@ -12,32 +14,26 @@ def main():
     #SAM model
     sam_checkpoint = "checkpoints/sam_vit_h_4b8939.pth"
     model_type = "vit_h" 
-    sam_device = "cuda" if torch.cuda.is_available() else "cpu" # SAM device
+    sam_device = "cuda" if torch.cuda.is_available() else "cpu" 
+    
+    #Gemini Model
+    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+    gemini_model = genai.GenerativeModel('gemini-1.5-pro-latest')
 
-    #Qwen Model
-    model_id = "Qwen/Qwen2.5-VL-7B-Instruct"
-    img_path = "imgs/desk.jpeg"
+    img_path = "imgs/demo.jpeg"
     image = Image.open(img_path).convert("RGB")
-
-    #Load Qwen Model
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        model_id,
-        torch_dtype=torch.float32,
-        device_map="auto"
-    )
-
-    processor = AutoProcessor.from_pretrained(model_id)
-
-    print(f"Qwen Model is on device: {model.device}")
-    print(f"SAM Model is on device: {sam_device}")
+    original_width, original_height = image.size
 
     #Load SAM Model
+    print("Loading SAM")
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
     sam.to(device=sam_device)
     sam_predictor = SamPredictor(sam)
 
+    print(f"SAM Model is on device: {sam_device}")
+
     #Prompt for Qwen Model
-    object_name = "coffee can"
+    object_name = "vita lemon tea"
     prompt = f"""
                 Analyze the following image and provide the bounding\
                 box of the [{object_name}]. Bounding boxes should be\
@@ -57,33 +53,13 @@ def main():
                   the the second object as {object_name}_2.
                   """
     
-    conversation = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "image", "image": img_path},
-                {"type": "text", "text": prompt},  
-            ],
-        }
-    ]
+    content = [image, prompt]
 
     #Process inputs
-    inputs = processor(
-        text=processor.apply_chat_template(conversation, add_generation_prompt=True),
-        images=[image],
-        return_tensors="pt" 
-    )
-    inputs = {k: v.to(model.device) for k, v in inputs.items()}
+    response = gemini_model.generate_content(content)
+    response_text = response.text
 
-    #Inference
-    with torch.no_grad(): 
-        output_tokens = model.generate(
-            **inputs,
-            max_new_tokens=256, 
-            do_sample=False,        
-        )
-
-    response_text = processor.decode(output_tokens[0], skip_special_tokens=True)
+    print(f"Response: {response_text}")
 
     json_string_match = re.search(r'\{.*\}', response_text, re.DOTALL)
 
@@ -104,8 +80,15 @@ def main():
             y1 = int(ymin_norm / scale_factor * original_height)
             x2 = int(xmax_norm / scale_factor * original_width)
             y2 = int(ymax_norm / scale_factor * original_height)
+            
 
             input_box_for_sam = np.array([x1, y1, x2, y2])
+
+            temp_image_with_box = image.copy()
+            draw = ImageDraw.Draw(temp_image_with_box)
+            draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
+            temp_image_with_box.save("debug_gemini_bbox.png")
+
             image_np = np.array(image)
             sam_predictor.set_image(image_np)
 
@@ -118,9 +101,11 @@ def main():
 
             mask = masks[0]
 
-            masked_image_output = np.zeros_like(image_np) 
+            masked_image_output = np.zeros_like(image_np)
             masked_image_output[mask] = image_np[mask]
             final_segmented_image = Image.fromarray(masked_image_output)
-            final_segmented_image.show() 
+
+            output_filename = "segmented_output_gemini.png"
+            final_segmented_image.save(output_filename)
 
 main()
