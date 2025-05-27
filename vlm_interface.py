@@ -34,7 +34,7 @@ def main():
     print(f"SAM Model is on device: {sam_device}")
 
     #Prompt for Gemini Model
-    object_name = "cheez it box"
+    object_name = "mustard bottle"
     prompt = f"""
                 Analyze the following image and provide the bounding\\
                 box of the [{object_name}]. Bounding boxes should be\\
@@ -52,6 +52,8 @@ def main():
                   size.\\n
                 * If there are mutiple same object, you can name\\
                   the the second object as {object_name}_2.
+                * Make sure the coordinates encapsulate the entire object, \\
+                  a bigger box is better than a smaller one
                   """
     
     content = [image, prompt]
