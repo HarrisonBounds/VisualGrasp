@@ -7,3 +7,4 @@ accelerate
 segment_anything
 opencv-python
 google-generativeai
+sam2

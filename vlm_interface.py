@@ -1,5 +1,6 @@
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 from segment_anything import sam_model_registry, SamPredictor
+from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
 import torch
 from PIL import Image, ImageDraw
 import re
@@ -18,7 +19,7 @@ def main():
     
     #Gemini Model
     genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+    gemini_model = genai.GenerativeModel('gemini-2.0-flash-lite')
 
     img_path = "imgs/demo.jpeg"
     image = Image.open(img_path).convert("RGB")
@@ -32,8 +33,8 @@ def main():
 
     print(f"SAM Model is on device: {sam_device}")
 
-    #Prompt for Qwen Model
-    object_name = "vita lemon tea"
+    #Prompt for Gemini Model
+    object_name = "cheez it box"
     prompt = f"""
                 Analyze the following image and provide the bounding\\
                 box of the [{object_name}]. Bounding boxes should be\\
@@ -70,8 +71,6 @@ def main():
         if object_name in parsed_data:
             coordinate_list = parsed_data[object_name]
 
-            print(f"Coordinates: {coordinate_list}")
-
             ymin_norm, xmin_norm, ymax_norm, xmax_norm = coordinate_list
 
             scale_factor = 1000.0
@@ -89,23 +88,23 @@ def main():
             draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
             temp_image_with_box.save("debug_gemini_bbox.png")
 
-            image_np = np.array(image)
-            sam_predictor.set_image(image_np)
+            img_np = np.array(image)
+            sam_predictor.set_image(img_np)
 
-            masks, scores, logits = sam_predictor.predict(
-                    point_coords=None, 
-                    point_labels=None, 
-                    box=input_box_for_sam, 
-                    multimask_output=False, 
-                )
+            masks, _, _ = sam_predictor.predict(
+                point_coords=None,
+                point_labels=None,
+                box=input_box_for_sam,
+                multimask_output=False, 
+            )
 
             mask = masks[0]
 
-            masked_image_output = np.zeros_like(image_np)
-            masked_image_output[mask] = image_np[mask]
-            final_segmented_image = Image.fromarray(masked_image_output)
+            red_layer = (mask[..., None] * np.array([0, 0, 255], dtype=np.uint8))
+            blended = ((img_np.astype(float) * 0.5) + (red_layer.astype(float) * 0.5)).astype(np.uint8)
 
+            masked_image = Image.fromarray(blended)
             output_filename = "segmented_output_gemini.png"
-            final_segmented_image.save(output_filename)
+            masked_image.save(output_filename)
 
 main()
