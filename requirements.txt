@@ -6,4 +6,4 @@ torchvision
 accelerate
 segment_anything
 opencv-python
-matplotlib
+google-generativeai

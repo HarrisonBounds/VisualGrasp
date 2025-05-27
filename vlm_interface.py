@@ -18,7 +18,7 @@ def main():
     
     #Gemini Model
     genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-    gemini_model = genai.GenerativeModel('gemini-1.5-pro-latest')
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
 
     img_path = "imgs/demo.jpeg"
     image = Image.open(img_path).convert("RGB")
@@ -35,21 +35,21 @@ def main():
     #Prompt for Qwen Model
     object_name = "vita lemon tea"
     prompt = f"""
-                Analyze the following image and provide the bounding\
-                box of the [{object_name}]. Bounding boxes should be\
-                in the format [ymin, xmin, ymax, xmax]. Additional\
-                notes:\n
-                * Please ensure the coordinates are relative to\
-                  the original image size.\n
-                * If an object is partially out of frame, estimate\
-                  the bounding box as best as possible.\n
-                * Return your answer as a single dict object where\
-                  each key is an object name and each value is the\
-                  corresponding bounding box coordinates. For example,\
-                  {object_name}: [ymin, xmin, ymax, xmax]. Do not\
-                  use Markdown. where H and W are the original image\
-                  size.\n
-                * If there are mutiple same object, you can name\
+                Analyze the following image and provide the bounding\\
+                box of the [{object_name}]. Bounding boxes should be\\
+                in the format [ymin, xmin, ymax, xmax]. Additional\\
+                notes:\\n
+                * Please ensure the coordinates are relative to\\
+                  the original image size.\\n
+                * If an object is partially out of frame, estimate\\
+                  the bounding box as best as possible.\\n
+                * Return your answer as a single JSON object where\\
+                  each key is an object name and each value is the\\
+                  corresponding bounding box coordinates. For example,\\
+                  {{\"{object_name}\": [ymin, xmin, ymax, xmax]}}. Do not\\
+                  use Markdown. where H and W are the original image\\
+                  size.\\n
+                * If there are mutiple same object, you can name\\
                   the the second object as {object_name}_2.
                   """
     
