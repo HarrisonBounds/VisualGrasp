@@ -1,0 +1,3 @@
+[submodule "BundleSDF"]
+	path = BundleSDF
+	url = git@github.com:nepfaff/BundleSDF.git
